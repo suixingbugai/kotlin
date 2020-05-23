@@ -119,8 +119,9 @@ fun MirrorOfBaseContinuationImpl.spilledValues(context: DefaultExecutionContext)
 }
 
 fun FieldVariable.toJavaValue(continuation: ObjectReference, context: DefaultExecutionContext): JavaValue {
+
     val valueDescriptor = ContinuationVariableValueDescriptorImpl(
-        context.project,
+        context,
         continuation,
         fieldName,
         variableName
