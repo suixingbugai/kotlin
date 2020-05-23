@@ -48,9 +48,6 @@ class CoroutinePreflightFrame(
     override fun isInLibraryContent() = false
 
     override fun isSynthetic() = false
-
-    fun restoredStackTrace() =
-        coroutineInfoData.restoredStackTrace(mode)
 }
 
 class CreationCoroutineStackFrame(debugProcess: DebugProcessImpl, item: CoroutineStackFrameItem, val first: Boolean) : CoroutineStackFrame(debugProcess, item) {

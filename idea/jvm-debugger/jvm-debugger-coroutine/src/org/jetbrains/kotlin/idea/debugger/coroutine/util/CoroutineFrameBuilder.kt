@@ -60,14 +60,11 @@ class CoroutineFrameBuilder {
         fun build(preflightFrame: CoroutinePreflightFrame, suspendContext: SuspendContextImpl): CoroutineFrameItemLists {
             val stackFrames = mutableListOf<CoroutineStackFrameItem>()
 
-            val lastFrameLocation = preflightFrame.threadPreCoroutineFrames.firstOrNull()?.location()
-            val restoredFrames = preflightFrame.restoredStackTrace().dropLastWhile {
-                it.location.sameLineAndMethod(lastFrameLocation)
-            }
-            stackFrames.addAll(restoredFrames)
+            val restoredStackTrace = restoredStackTrace(preflightFrame)
+            stackFrames.addAll(restoredStackTrace)
 
             // rest of the stack
-            // @TODO perhaps we need to merge the dropped frame below with the last restored (at least variables).
+            // @TODO perhaps we need to merge the dropped frame below with the last from restored (at least variables).
             val framesLeft = preflightFrame.threadPreCoroutineFrames
             stackFrames.addAll(framesLeft.mapIndexedNotNull { index, stackFrameProxyImpl ->
                 suspendContext.invokeInManagerThread { buildRealStackFrameItem(stackFrameProxyImpl) }
@@ -75,6 +72,24 @@ class CoroutineFrameBuilder {
 
             return CoroutineFrameItemLists(stackFrames, preflightFrame.coroutineInfoData.creationStackTrace)
         }
+
+        fun restoredStackTrace(preflightFrame: CoroutinePreflightFrame): List<CoroutineStackFrameItem> {
+            val originalRestoredStackFrame = preflightFrame.coroutineInfoData.stackTrace
+            val firstFramesRemoved = when {
+                originalRestoredStackFrame.isNotEmpty() && originalRestoredStackFrame.first().isInvokeSuspend() -> {
+                    originalRestoredStackFrame.drop(1)
+                }
+                preflightFrame.mode == SuspendExitMode.SUSPEND_METHOD_PARAMETER -> originalRestoredStackFrame.drop(1)
+                else -> originalRestoredStackFrame
+            }
+            val restoredStackTrace = firstFramesRemoved
+            val lastPreCoroutineFrameLocation = preflightFrame.threadPreCoroutineFrames.firstOrNull()?.location()
+            val restoredFrames = restoredStackTrace.dropLastWhile {
+                it.location.sameLineAndMethod(lastPreCoroutineFrameLocation)
+            }
+            return restoredFrames
+        }
+
 
         data class CoroutineFrameItemLists(
             val frames: List<CoroutineStackFrameItem>,
